@@ -1,12 +1,13 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { getPageBySlug } from '@/lib/db/pagesRepo';
-import BlockRenderer from '@/components/blocks/BlockRenderer';
+import PreviewBridge from '@/components/builder/PreviewBridge';
 
-export const revalidate = 60; // ISR: regenerate every 60 seconds
+export const dynamic = 'force-dynamic'; // always fresh so editor sees latest blocks
 
 interface Props {
   params: Promise<{ slug: string[] }>;
+  searchParams: Promise<{ edit?: string }>;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -35,55 +36,61 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function PreviewPage({ params }: Props) {
+export default async function PreviewPage({ params, searchParams }: Props) {
   const { slug } = await params;
+  const { edit } = await searchParams;
   const slugPath = '/' + slug.join('/');
+  const isEditMode = edit === 'true';
 
   const page = await getPageBySlug(slugPath);
   if (!page) notFound();
 
+  const blocks = (page.blocks ?? []).sort((a, b) => a.order - b.order);
+
   return (
     <div className="preview-root">
-      {/* Preview Banner — shown in dev only */}
-      <div
-        style={{
-          background: 'linear-gradient(135deg, #7c3aed, #5b21b6)',
-          color: '#fff',
-          padding: '8px 20px',
-          fontSize: 13,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontWeight: 700 }}>⚡ PAGEFORGE</span>
-          <span style={{ opacity: 0.5 }}>|</span>
-          <span>Preview: {page.title}</span>
-          <span
-            style={{
-              background: page.status === 'published' ? '#10b981' : '#f59e0b',
-              padding: '2px 10px',
-              borderRadius: 999,
-              fontSize: 11,
-              fontWeight: 700,
-            }}
-          >
-            {page.status.toUpperCase()}
-          </span>
+      {/* Preview Banner — only outside edit mode */}
+      {!isEditMode && (
+        <div
+          style={{
+            background: 'linear-gradient(135deg, #7c3aed, #5b21b6)',
+            color: '#fff',
+            padding: '8px 20px',
+            fontSize: 13,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontWeight: 700 }}>⚡ PAGEFORGE</span>
+            <span style={{ opacity: 0.5 }}>|</span>
+            <span>Preview: {page.title}</span>
+            <span
+              style={{
+                background: page.status === 'published' ? '#10b981' : '#f59e0b',
+                padding: '2px 10px',
+                borderRadius: 999,
+                fontSize: 11,
+                fontWeight: 700,
+              }}
+            >
+              {page.status.toUpperCase()}
+            </span>
+          </div>
+          <a href="/dashboard" style={{ color: '#fff', fontSize: 12, opacity: 0.8 }}>
+            ← Back to Editor
+          </a>
         </div>
-        <a href="/dashboard" style={{ color: '#fff', fontSize: 12, opacity: 0.8 }}>
-          ← Back to Editor
-        </a>
-      </div>
+      )}
 
-      {/* Page Content */}
+      {/*
+        PreviewBridge handles both modes:
+        - In edit mode (inside iframe): listens for postMessage, shows overlays
+        - In normal mode: renders blocks statically, no overlays (not in iframe)
+      */}
       <main>
-        {(page.blocks ?? [])
-          .sort((a, b) => a.order - b.order)
-          .map((block) => (
-            <BlockRenderer key={block.id} block={block} />
-          ))}
+        <PreviewBridge initialBlocks={blocks} />
       </main>
     </div>
   );

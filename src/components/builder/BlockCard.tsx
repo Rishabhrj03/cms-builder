@@ -12,6 +12,9 @@ const TYPE_LABELS: Record<BlockType, string> = {
   button: '🔘 Button',
   divider: '➖ Divider',
   custom: '💻 Custom Code',
+  navbar: '🧭 Navbar',
+  'product-grid': '🛍️ Product Grid',
+  'pincode-checker': '📍 Pincode Checker',
 };
 
 interface Props {

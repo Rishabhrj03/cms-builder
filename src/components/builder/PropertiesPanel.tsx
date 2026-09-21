@@ -1,197 +1,377 @@
 'use client';
 
+import { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { Block, BlockType, CardItem } from '@/types/Block';
 import { v4 as uuidv4 } from 'uuid';
 
-const CustomCodePanel = dynamic(() => import('./CustomCodePanel'), { ssr: false });
+const CodePanel = dynamic(() => import('./CodePanel'), { ssr: false });
 
 interface Props {
   block: Block | null;
   onChange: (updated: Block) => void;
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+// ─── Helper UI primitives ─────────────────────────────────────────────────────
+
+function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
-    <div className="form-group">
-      <label className="form-label">{label}</label>
+    <div className="prop-field">
+      <label className="prop-label">{label}</label>
       {children}
+      {hint && <p className="prop-hint">{hint}</p>}
     </div>
   );
 }
 
-function AlignSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function AlignButtons({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
-    <select className="form-select" value={value} onChange={(e) => onChange(e.target.value)}>
-      <option value="left">Left</option>
-      <option value="center">Center</option>
-      <option value="right">Right</option>
-    </select>
+    <div className="btn-group">
+      {[
+        { v: 'left', icon: '⬅' },
+        { v: 'center', icon: '⬛' },
+        { v: 'right', icon: '➡' },
+      ].map(({ v, icon }) => (
+        <button
+          key={v}
+          className={`btn-group-btn ${value === v ? 'active' : ''}`}
+          onClick={() => onChange(v)}
+          title={v.charAt(0).toUpperCase() + v.slice(1)}
+        >
+          {icon}
+        </button>
+      ))}
+    </div>
   );
 }
 
-function HeroProps({ block, set }: { block: Block; set: (k: string, v: unknown) => void }) {
+function SizeButtons({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="btn-group">
+      {['sm', 'md', 'lg'].map((s) => (
+        <button
+          key={s}
+          className={`btn-group-btn ${value === s ? 'active' : ''}`}
+          onClick={() => onChange(s)}
+        >
+          {s === 'sm' ? 'Small' : s === 'md' ? 'Medium' : 'Large'}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function ColorRow({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <Field label={label}>
+      <div className="color-row">
+        <input type="color" className="form-color" value={value} onChange={(e) => onChange(e.target.value)} />
+        <input className="form-input" value={value} onChange={(e) => onChange(e.target.value)} placeholder="#000000" />
+      </div>
+    </Field>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(true);
+  return (
+    <div className="prop-section">
+      <button className="prop-section-header" onClick={() => setOpen(!open)}>
+        <span>{title}</span>
+        <span style={{ opacity: 0.5, fontSize: 11 }}>{open ? '▲' : '▼'}</span>
+      </button>
+      {open && <div className="prop-section-body">{children}</div>}
+    </div>
+  );
+}
+
+// ─── Per-block visual panels ──────────────────────────────────────────────────
+
+function HeroPanel({ block, set }: { block: Block; set: (k: string, v: unknown) => void }) {
   const p = block.props;
   return (
     <>
-      <Field label="Title"><input className="form-input" value={p.title} onChange={e => set('title', e.target.value)} /></Field>
-      <Field label="Subtitle"><input className="form-input" value={p.subtitle} onChange={e => set('subtitle', e.target.value)} /></Field>
-      <Field label="CTA Label"><input className="form-input" value={p.ctaLabel} onChange={e => set('ctaLabel', e.target.value)} /></Field>
-      <Field label="CTA URL"><input className="form-input" value={p.ctaUrl} onChange={e => set('ctaUrl', e.target.value)} /></Field>
-      <Field label="Background Color">
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <input type="color" className="form-color" value={p.bgColor} onChange={e => set('bgColor', e.target.value)} />
-          <input className="form-input" value={p.bgColor} onChange={e => set('bgColor', e.target.value)} />
-        </div>
-      </Field>
-      <Field label="Text Color">
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <input type="color" className="form-color" value={p.textColor} onChange={e => set('textColor', e.target.value)} />
-          <input className="form-input" value={p.textColor} onChange={e => set('textColor', e.target.value)} />
-        </div>
-      </Field>
-      <Field label="Alignment"><AlignSelect value={p.align} onChange={v => set('align', v)} /></Field>
+      <Section title="Content">
+        <Field label="Headline" hint="Main attention-grabbing title">
+          <input className="form-input" value={p.title} onChange={(e) => set('title', e.target.value)} />
+        </Field>
+        <Field label="Subheadline" hint="Supporting text below the headline">
+          <input className="form-input" value={p.subtitle} onChange={(e) => set('subtitle', e.target.value)} />
+        </Field>
+        <Field label="Button Text">
+          <input className="form-input" value={p.ctaLabel} onChange={(e) => set('ctaLabel', e.target.value)} />
+        </Field>
+        <Field label="Button Link">
+          <input className="form-input" value={p.ctaUrl} onChange={(e) => set('ctaUrl', e.target.value)} placeholder="https://…" />
+        </Field>
+      </Section>
+      <Section title="Style">
+        <ColorRow label="Background Color" value={p.bgColor} onChange={(v) => set('bgColor', v)} />
+        <ColorRow label="Text Color" value={p.textColor} onChange={(v) => set('textColor', v)} />
+        <Field label="Text Alignment">
+          <AlignButtons value={p.align} onChange={(v) => set('align', v)} />
+        </Field>
+      </Section>
     </>
   );
 }
 
-function TextPropsPanel({ block, set }: { block: Block; set: (k: string, v: unknown) => void }) {
+function TextPanel({ block, set }: { block: Block; set: (k: string, v: unknown) => void }) {
   const p = block.props;
   return (
     <>
-      <Field label="Content"><textarea className="form-textarea" value={p.content} onChange={e => set('content', e.target.value)} rows={6} /></Field>
-      <Field label="Alignment"><AlignSelect value={p.align} onChange={v => set('align', v)} /></Field>
-      <Field label="Font Size">
-        <select className="form-select" value={p.fontSize} onChange={e => set('fontSize', e.target.value)}>
-          <option value="sm">Small</option>
-          <option value="md">Medium</option>
-          <option value="lg">Large</option>
-        </select>
-      </Field>
+      <Section title="Content">
+        <Field label="Text Content" hint="Supports multiple paragraphs">
+          <textarea className="form-textarea" value={p.content} onChange={(e) => set('content', e.target.value)} rows={6} />
+        </Field>
+      </Section>
+      <Section title="Style">
+        <Field label="Alignment">
+          <AlignButtons value={p.align} onChange={(v) => set('align', v)} />
+        </Field>
+        <Field label="Font Size">
+          <SizeButtons value={p.fontSize} onChange={(v) => set('fontSize', v)} />
+        </Field>
+      </Section>
     </>
   );
 }
 
-function ImagePropsPanel({ block, set }: { block: Block; set: (k: string, v: unknown) => void }) {
+function ImagePanel({ block, set }: { block: Block; set: (k: string, v: unknown) => void }) {
   const p = block.props;
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => set('src', ev.target?.result as string);
+    reader.readAsDataURL(file);
+  };
+
   return (
     <>
-      <Field label="Image URL"><input className="form-input" value={p.src} onChange={e => set('src', e.target.value)} placeholder="https://…" /></Field>
-      <Field label="Alt Text"><input className="form-input" value={p.alt} onChange={e => set('alt', e.target.value)} /></Field>
-      <Field label="Caption"><input className="form-input" value={p.caption} onChange={e => set('caption', e.target.value)} /></Field>
-      <Field label="Width">
-        <select className="form-select" value={p.width} onChange={e => set('width', e.target.value)}>
-          <option value="full">Full Width</option>
-          <option value="half">Half</option>
-          <option value="quarter">Quarter</option>
-        </select>
-      </Field>
+      <Section title="Image">
+        <Field label="Upload Image" hint="Or paste a URL below">
+          <label className="upload-btn">
+            📎 Choose file
+            <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileChange} />
+          </label>
+        </Field>
+        <Field label="Image URL">
+          <input className="form-input" value={p.src} onChange={(e) => set('src', e.target.value)} placeholder="https://…" />
+        </Field>
+        {p.src && (
+          <img src={p.src} alt={p.alt} style={{ width: '100%', borderRadius: 8, marginTop: 4, objectFit: 'cover', maxHeight: 120 }} />
+        )}
+        <Field label="Alt Text" hint="Describe the image for accessibility">
+          <input className="form-input" value={p.alt} onChange={(e) => set('alt', e.target.value)} />
+        </Field>
+        <Field label="Caption">
+          <input className="form-input" value={p.caption} onChange={(e) => set('caption', e.target.value)} />
+        </Field>
+      </Section>
+      <Section title="Layout">
+        <Field label="Width">
+          <div className="btn-group">
+            {(['full', 'half', 'quarter'] as const).map((w) => (
+              <button key={w} className={`btn-group-btn ${p.width === w ? 'active' : ''}`} onClick={() => set('width', w)}>
+                {w === 'full' ? 'Full' : w === 'half' ? 'Half' : 'Quarter'}
+              </button>
+            ))}
+          </div>
+        </Field>
+      </Section>
     </>
   );
 }
 
-function CardsPropsPanel({ block, set }: { block: Block; set: (k: string, v: unknown) => void }) {
+function CardsPanel({ block, set }: { block: Block; set: (k: string, v: unknown) => void }) {
   const p = block.props;
   const items: CardItem[] = p.items ?? [];
-  const updateItem = (idx: number, key: keyof CardItem, val: string) =>
-    set('items', items.map((item, i) => (i === idx ? { ...item, [key]: val } : item)));
-  const addItem = () => set('items', [...items, { id: uuidv4(), icon: '⭐', title: 'New Card', description: 'Description' }]);
-  const removeItem = (idx: number) => set('items', items.filter((_, i) => i !== idx));
+  const update = (idx: number, key: keyof CardItem, val: string) =>
+    set('items', items.map((it, i) => (i === idx ? { ...it, [key]: val } : it)));
+  const add = () => set('items', [...items, { id: uuidv4(), icon: '⭐', title: 'New Card', description: 'Description here' }]);
+  const remove = (idx: number) => set('items', items.filter((_, i) => i !== idx));
 
   return (
     <>
-      <Field label="Heading"><input className="form-input" value={p.heading} onChange={e => set('heading', e.target.value)} /></Field>
-      <Field label="Columns">
-        <select className="form-select" value={p.columns} onChange={e => set('columns', Number(e.target.value))}>
-          <option value={2}>2 Columns</option>
-          <option value={3}>3 Columns</option>
-          <option value={4}>4 Columns</option>
-        </select>
-      </Field>
-      <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-          <span className="form-label">Cards ({items.length})</span>
-          <button className="btn btn-outline btn-sm" onClick={addItem}>+ Add</button>
-        </div>
+      <Section title="Content">
+        <Field label="Section Heading">
+          <input className="form-input" value={p.heading} onChange={(e) => set('heading', e.target.value)} />
+        </Field>
+      </Section>
+      <Section title="Layout">
+        <Field label="Columns">
+          <div className="btn-group">
+            {[2, 3, 4].map((n) => (
+              <button key={n} className={`btn-group-btn ${p.columns === n ? 'active' : ''}`} onClick={() => set('columns', n)}>
+                {n}
+              </button>
+            ))}
+          </div>
+        </Field>
+      </Section>
+      <Section title={`Cards (${items.length})`}>
         {items.map((item, i) => (
-          <div key={item.id} style={{ background: 'var(--bg-base)', border: '1px solid var(--border)', borderRadius: 8, padding: 10, marginBottom: 8 }}>
-            <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
-              <input className="form-input" value={item.icon} onChange={e => updateItem(i, 'icon', e.target.value)} style={{ width: 50 }} placeholder="🌟" />
-              <input className="form-input" value={item.title} onChange={e => updateItem(i, 'title', e.target.value)} placeholder="Title" />
-              <button className="btn btn-danger btn-icon" onClick={() => removeItem(i)}>✕</button>
+          <div key={item.id} className="card-item-editor">
+            <div className="card-item-row">
+              <input className="form-input" value={item.icon} onChange={(e) => update(i, 'icon', e.target.value)} style={{ width: 50 }} placeholder="🌟" />
+              <input className="form-input" value={item.title} onChange={(e) => update(i, 'title', e.target.value)} placeholder="Card title" />
+              <button className="btn btn-danger btn-icon" onClick={() => remove(i)}>✕</button>
             </div>
-            <input className="form-input" value={item.description} onChange={e => updateItem(i, 'description', e.target.value)} placeholder="Description" />
+            <input className="form-input" value={item.description} onChange={(e) => update(i, 'description', e.target.value)} placeholder="Short description" />
           </div>
         ))}
+        <button className="btn btn-outline btn-sm" style={{ marginTop: 6, width: '100%' }} onClick={add}>
+          + Add Card
+        </button>
+      </Section>
+    </>
+  );
+}
+
+function ButtonPanel({ block, set }: { block: Block; set: (k: string, v: unknown) => void }) {
+  const p = block.props;
+  return (
+    <>
+      <Section title="Content">
+        <Field label="Button Text">
+          <input className="form-input" value={p.label} onChange={(e) => set('label', e.target.value)} />
+        </Field>
+        <Field label="Link to" hint="URL this button goes to">
+          <input className="form-input" value={p.url} onChange={(e) => set('url', e.target.value)} placeholder="https://…" />
+        </Field>
+      </Section>
+      <Section title="Style">
+        <Field label="Button Style">
+          <div className="btn-group">
+            {[
+              { v: 'primary', label: 'Filled' },
+              { v: 'secondary', label: 'Subtle' },
+              { v: 'outline', label: 'Outline' },
+            ].map(({ v, label }) => (
+              <button key={v} className={`btn-group-btn ${p.variant === v ? 'active' : ''}`} onClick={() => set('variant', v)}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </Field>
+        <Field label="Size">
+          <SizeButtons value={p.size} onChange={(v) => set('size', v)} />
+        </Field>
+        <Field label="Position">
+          <AlignButtons value={p.align} onChange={(v) => set('align', v)} />
+        </Field>
+      </Section>
+    </>
+  );
+}
+
+function DividerPanel({ block, set }: { block: Block; set: (k: string, v: unknown) => void }) {
+  const p = block.props;
+  return (
+    <>
+      <Section title="Style">
+        <Field label="Line Style">
+          <div className="btn-group">
+            {['solid', 'dashed', 'dotted'].map((s) => (
+              <button key={s} className={`btn-group-btn ${p.style === s ? 'active' : ''}`} onClick={() => set('style', s)}>
+                {s.charAt(0).toUpperCase() + s.slice(1)}
+              </button>
+            ))}
+          </div>
+        </Field>
+        <Field label="Optional Label">
+          <input className="form-input" value={p.label} onChange={(e) => set('label', e.target.value)} placeholder="e.g. OR" />
+        </Field>
+        <ColorRow label="Line Color" value={p.color} onChange={(v) => set('color', v)} />
+      </Section>
+    </>
+  );
+}
+
+function NavbarPanel({ block, set }: { block: Block; set: (k: string, v: unknown) => void }) {
+  const p = block.props;
+  return (
+    <>
+      <Section title="Brand">
+        <Field label="Brand Name">
+          <input className="form-input" value={p.brandName} onChange={(e) => set('brandName', e.target.value)} />
+        </Field>
+        <Field label="Logo Icon / Emoji">
+          <input className="form-input" value={p.logoIcon} onChange={(e) => set('logoIcon', e.target.value)} placeholder="🎂" />
+        </Field>
+      </Section>
+      <Section title="Promo Banner">
+        <Field label="Promo Message" hint="Top announcement bar text">
+          <input className="form-input" value={p.promoText} onChange={(e) => set('promoText', e.target.value)} />
+        </Field>
+        <Field label="Promo Code">
+          <input className="form-input" value={p.promoCode} onChange={(e) => set('promoCode', e.target.value)} />
+        </Field>
+      </Section>
+    </>
+  );
+}
+
+function ProductGridPanel({ block, set }: { block: Block; set: (k: string, v: unknown) => void }) {
+  const p = block.props;
+  return (
+    <>
+      <Section title="Content">
+        <Field label="Section Heading">
+          <input className="form-input" value={p.heading} onChange={(e) => set('heading', e.target.value)} />
+        </Field>
+        <Field label="Subheading">
+          <input className="form-input" value={p.subheading} onChange={(e) => set('subheading', e.target.value)} />
+        </Field>
+      </Section>
+      <div className="prop-hint" style={{ padding: '0 0 8px' }}>
+        💡 Products are loaded dynamically. Use the <strong>Code</strong> tab to customise product data or filtering logic.
       </div>
     </>
   );
 }
 
-function ButtonPropsPanel({ block, set }: { block: Block; set: (k: string, v: unknown) => void }) {
+function PincodePanel({ block, set }: { block: Block; set: (k: string, v: unknown) => void }) {
   const p = block.props;
   return (
-    <>
-      <Field label="Label"><input className="form-input" value={p.label} onChange={e => set('label', e.target.value)} /></Field>
-      <Field label="URL"><input className="form-input" value={p.url} onChange={e => set('url', e.target.value)} /></Field>
-      <Field label="Variant">
-        <select className="form-select" value={p.variant} onChange={e => set('variant', e.target.value)}>
-          <option value="primary">Primary</option>
-          <option value="secondary">Secondary</option>
-          <option value="outline">Outline</option>
-        </select>
+    <Section title="Content">
+      <Field label="Title">
+        <input className="form-input" value={p.title} onChange={(e) => set('title', e.target.value)} />
       </Field>
-      <Field label="Alignment"><AlignSelect value={p.align} onChange={v => set('align', v)} /></Field>
-      <Field label="Size">
-        <select className="form-select" value={p.size} onChange={e => set('size', e.target.value)}>
-          <option value="sm">Small</option>
-          <option value="md">Medium</option>
-          <option value="lg">Large</option>
-        </select>
+      <Field label="Input Placeholder">
+        <input className="form-input" value={p.placeholder} onChange={(e) => set('placeholder', e.target.value)} />
       </Field>
-    </>
+    </Section>
   );
 }
 
-function DividerPropsPanel({ block, set }: { block: Block; set: (k: string, v: unknown) => void }) {
-  const p = block.props;
-  return (
-    <>
-      <Field label="Style">
-        <select className="form-select" value={p.style} onChange={e => set('style', e.target.value)}>
-          <option value="solid">Solid</option>
-          <option value="dashed">Dashed</option>
-          <option value="dotted">Dotted</option>
-        </select>
-      </Field>
-      <Field label="Label"><input className="form-input" value={p.label} onChange={e => set('label', e.target.value)} placeholder="Optional label" /></Field>
-      <Field label="Color">
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <input type="color" className="form-color" value={p.color} onChange={e => set('color', e.target.value)} />
-          <input className="form-input" value={p.color} onChange={e => set('color', e.target.value)} />
-        </div>
-      </Field>
-    </>
-  );
-}
+// ─── Panel registry ───────────────────────────────────────────────────────────
 
-const PANELS: Partial<Record<BlockType, React.ComponentType<{ block: Block; set: (k: string, v: unknown) => void }>>> = {
-  hero: HeroProps,
-  text: TextPropsPanel,
-  image: ImagePropsPanel,
-  cards: CardsPropsPanel,
-  button: ButtonPropsPanel,
-  divider: DividerPropsPanel,
+const VISUAL_PANELS: Partial<Record<BlockType, React.ComponentType<{ block: Block; set: (k: string, v: unknown) => void }>>> = {
+  hero: HeroPanel,
+  text: TextPanel,
+  image: ImagePanel,
+  cards: CardsPanel,
+  button: ButtonPanel,
+  divider: DividerPanel,
+  navbar: NavbarPanel,
+  'product-grid': ProductGridPanel,
+  'pincode-checker': PincodePanel,
 };
 
+// ─── Main PropertiesPanel ─────────────────────────────────────────────────────
+
 export default function PropertiesPanel({ block, onChange }: Props) {
+  const [activeTab, setActiveTab] = useState<'visual' | 'code'>('visual');
+
   if (!block) {
     return (
       <div className="builder-props">
         <div className="props-header">Properties</div>
         <div className="props-empty">
-          <span style={{ fontSize: 28 }}>👈</span>
-          <span>Select a block to edit its properties</span>
+          <span style={{ fontSize: 32 }}>👈</span>
+          <span>Click a block in the preview to edit it</span>
         </div>
       </div>
     );
@@ -201,27 +381,79 @@ export default function PropertiesPanel({ block, onChange }: Props) {
     onChange({ ...block, props: { ...block.props, [key]: value } });
   };
 
-  // Custom block gets Monaco editor
-  if (block.type === 'custom') {
-    return (
-      <div className="builder-props">
-        <div className="props-header">💻 CUSTOM CODE</div>
-        <div className="props-body">
-          <CustomCodePanel block={block} set={set} />
-        </div>
-      </div>
-    );
-  }
+  const handleOverride = (enabled: boolean) => {
+    onChange({ ...block, props: { ...block.props, _codeOverride: enabled } });
+  };
 
-  const Panel = PANELS[block.type];
-  if (!Panel) return null;
+  const isCustom = block.type === 'custom';
+  const VisualPanel = VISUAL_PANELS[block.type];
 
   return (
     <div className="builder-props">
-      <div className="props-header">Properties — {block.type.toUpperCase()}</div>
+      {/* Header */}
+      <div className="props-header">
+        <span>{getBlockEmoji(block.type)} {getBlockName(block.type)}</span>
+      </div>
+
+      {/* Tab bar — Visual | Code */}
+      {!isCustom && (
+        <div className="props-tabs">
+          <button
+            className={`props-tab ${activeTab === 'visual' ? 'active' : ''}`}
+            onClick={() => setActiveTab('visual')}
+          >
+            🎨 Visual
+          </button>
+          <button
+            className={`props-tab ${activeTab === 'code' ? 'active' : ''}`}
+            onClick={() => setActiveTab('code')}
+          >
+            &lt;/&gt; Code
+          </button>
+        </div>
+      )}
+
+      {/* Body */}
       <div className="props-body">
-        <Panel block={block} set={set} />
+        {(activeTab === 'visual' && !isCustom) ? (
+          VisualPanel ? (
+            <VisualPanel block={block} set={set} />
+          ) : (
+            <div className="prop-hint">No visual settings for this block type.</div>
+          )
+        ) : (
+          <CodePanel block={block} set={set} onOverride={handleOverride} />
+        )}
       </div>
     </div>
   );
 }
+
+const BLOCK_EMOJIS: Record<BlockType, string> = {
+  hero: '🦸',
+  text: '📝',
+  image: '🖼️',
+  cards: '🃏',
+  button: '🔘',
+  divider: '➖',
+  custom: '💻',
+  navbar: '🧭',
+  'product-grid': '🛍️',
+  'pincode-checker': '📍',
+};
+
+const BLOCK_NAMES: Record<BlockType, string> = {
+  hero: 'Hero Section',
+  text: 'Text Block',
+  image: 'Image',
+  cards: 'Card Grid',
+  button: 'Button',
+  divider: 'Divider',
+  custom: 'Custom Code',
+  navbar: 'Navigation Bar',
+  'product-grid': 'Product Grid',
+  'pincode-checker': 'Pincode Checker',
+};
+
+function getBlockEmoji(type: BlockType) { return BLOCK_EMOJIS[type] ?? '🧩'; }
+function getBlockName(type: BlockType) { return BLOCK_NAMES[type] ?? type; }
