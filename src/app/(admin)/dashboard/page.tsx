@@ -27,6 +27,7 @@ export default function DashboardPage() {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
 
   const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
     setToast({ msg, type });
@@ -48,35 +49,49 @@ export default function DashboardPage() {
   useEffect(() => { load(); }, [load]);
 
   const handleCreate = async () => {
-    if (!form.title.trim() || !form.slug.trim()) return;
+    if (!form.title.trim()) return;
+    const rawSlug = form.slug.trim() || form.title.trim();
+    const formattedSlug = rawSlug.startsWith('/') ? rawSlug : `/${rawSlug}`;
+
     setSaving(true);
     try {
       const res = await fetch('/api/pages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: form.title, slug: form.slug }),
+        body: JSON.stringify({ title: form.title, slug: formattedSlug }),
       });
       const data = await res.json();
       if (data.id) {
-        showToast('Page created!');
+        showToast('Page created! Redirecting...');
         setShowNewModal(false);
         setForm({ title: '', slug: '' });
-        await load();
+        window.location.href = `/pages/${data.id}`;
       } else {
-        showToast(data.error ?? 'Failed to create page. Is MongoDB running?', 'error');
+        showToast(data.error ?? 'Failed to create page.', 'error');
       }
+    } catch (err) {
+      console.error(err);
+      showToast('Error creating page.', 'error');
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Delete this page? This cannot be undone.')) return;
+  const confirmDelete = async (id: string) => {
     setDeleting(id);
     try {
-      await fetch(`/api/pages/${id}`, { method: 'DELETE' });
-      showToast('Page deleted.', 'error');
-      await load();
+      const res = await fetch(`/api/pages/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        showToast('✅ Page deleted successfully!', 'success');
+        setDeleteTarget(null);
+        await load();
+      } else {
+        const data = await res.json();
+        showToast(data.error ?? 'Failed to delete page.', 'error');
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('Error deleting page.', 'error');
     } finally {
       setDeleting(null);
     }
@@ -201,7 +216,7 @@ export default function DashboardPage() {
                         </a>
                         <button
                           className="btn btn-danger btn-sm"
-                          onClick={() => handleDelete(p._id)}
+                          onClick={() => setDeleteTarget({ id: p._id, title: p.title })}
                           disabled={deleting === p._id}
                         >
                           {deleting === p._id ? '…' : '🗑'}
@@ -255,9 +270,43 @@ export default function DashboardPage() {
               <button
                 className="btn btn-primary"
                 onClick={handleCreate}
-                disabled={saving || !form.title.trim() || !form.slug.trim()}
+                disabled={saving || !form.title.trim()}
               >
                 {saving ? 'Creating…' : 'Create Page'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Delete Confirmation Modal ── */}
+      {deleteTarget && (
+        <div className="modal-overlay" onClick={() => setDeleteTarget(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
+              <span style={{ fontSize: 26, background: 'rgba(239,68,68,0.12)', color: '#ef4444', padding: '10px 14px', borderRadius: 12 }}>🗑️</span>
+              <div>
+                <h2 className="modal-title" style={{ margin: 0, fontSize: 18 }}>Delete Page?</h2>
+                <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}>
+                  Are you sure you want to delete <strong>&ldquo;{deleteTarget.title}&rdquo;</strong>?
+                </div>
+              </div>
+            </div>
+
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: 20 }}>
+              This page will be permanently removed from your website and database. This action cannot be undone.
+            </p>
+
+            <div className="modal-actions">
+              <button className="btn btn-secondary" onClick={() => setDeleteTarget(null)}>
+                Cancel
+              </button>
+              <button
+                className="btn btn-danger"
+                onClick={() => confirmDelete(deleteTarget.id)}
+                disabled={deleting === deleteTarget.id}
+              >
+                {deleting === deleteTarget.id ? 'Deleting…' : 'Yes, Delete Page'}
               </button>
             </div>
           </div>

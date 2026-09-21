@@ -24,7 +24,8 @@ export default function CardGridBlock({ props: p }: { props: CardsProps }) {
           display: 'grid',
           gridTemplateColumns: `repeat(${cols}, 1fr)`,
           gap: 24,
-          maxWidth: 1100,
+          maxWidth: '100%',
+          width: '100%',
           margin: '0 auto',
         }}
       >

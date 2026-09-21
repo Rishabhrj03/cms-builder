@@ -10,6 +10,7 @@ import ComponentPalette from '@/components/builder/ComponentPalette';
 import BuilderCanvas from '@/components/builder/BuilderCanvas';
 import PropertiesPanel from '@/components/builder/PropertiesPanel';
 import PageSettingsDrawer from '@/components/builder/PageSettingsDrawer';
+import CodeExportModal from '@/components/builder/CodeExportModal';
 
 type Device = 'desktop' | 'tablet' | 'mobile';
 
@@ -34,7 +35,28 @@ export default function PageEditorPage() {
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
   const [device, setDevice] = useState<Device>('desktop');
   const [showSettings, setShowSettings] = useState(false);
+  const [showCodeExport, setShowCodeExport] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [panelWidth, setPanelWidth] = useState<number>(380);
+  const [isResizing, setIsResizing] = useState(false);
+
+  // ─── Resizable side panel width ─────────────────────────────────────────────
+  useEffect(() => {
+    if (!isResizing) return;
+    const handleMouseMove = (e: MouseEvent) => {
+      const newWidth = window.innerWidth - e.clientX;
+      if (newWidth >= 280 && newWidth <= 850) {
+        setPanelWidth(newWidth);
+      }
+    };
+    const handleMouseUp = () => setIsResizing(false);
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing]);
 
   // Undo/redo history
   const historyRef = useRef<Block[][]>([]);
@@ -261,6 +283,10 @@ export default function PageEditorPage() {
           ⚙️ Settings
         </button>
 
+        <button className="btn btn-secondary btn-sm" onClick={() => setShowCodeExport(true)} title="Export Code (React, Node, Python, HTML)">
+          💻 Code Export
+        </button>
+
         <a href={`/preview/${(page?.slug ?? '').replace(/^\//, '')}`} target="_blank" rel="noreferrer">
           <button className="btn btn-secondary btn-sm">👁 Preview</button>
         </a>
@@ -273,6 +299,11 @@ export default function PageEditorPage() {
       {/* ── Three-Panel Builder ── */}
       <div className="builder-layout">
         <ComponentPalette
+          blocks={blocks}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+          onDelete={deleteBlock}
+          onReorder={reorderBlocks}
           onAdd={(type) => addBlock(type)}
           onAddTemplate={addTemplate}
         />
@@ -289,7 +320,27 @@ export default function PageEditorPage() {
             addBlock('text', afterId);
           }}
         />
-        <PropertiesPanel block={selectedBlock} onChange={updateBlock} />
+
+        {/* ── Drag Resize Handle ── */}
+        <div
+          onMouseDown={() => setIsResizing(true)}
+          style={{
+            width: 5,
+            cursor: 'col-resize',
+            background: isResizing ? 'var(--accent)' : 'var(--border)',
+            transition: 'background 150ms ease',
+            zIndex: 10,
+            userSelect: 'none',
+          }}
+          title="Drag left/right to resize Code & Properties side panel"
+        />
+
+        <PropertiesPanel
+          block={selectedBlock}
+          onChange={updateBlock}
+          width={panelWidth}
+          onWidthChange={setPanelWidth}
+        />
       </div>
 
       {/* ── Page Settings Drawer ── */}
@@ -298,6 +349,15 @@ export default function PageEditorPage() {
           page={page}
           onClose={() => setShowSettings(false)}
           onSave={handlePageSettingsSave}
+        />
+      )}
+
+      {/* ── Code Export Modal ── */}
+      {showCodeExport && page && (
+        <CodeExportModal
+          page={page}
+          blocks={blocks}
+          onClose={() => setShowCodeExport(false)}
         />
       )}
 

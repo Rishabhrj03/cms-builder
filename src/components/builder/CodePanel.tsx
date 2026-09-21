@@ -16,6 +16,7 @@ type Tab = 'html' | 'css' | 'js';
 
 export default function CodePanel({ block, set, onOverride }: Props) {
   const [tab, setTab] = useState<Tab>('html');
+  const [editorHeight, setEditorHeight] = useState<number>(380);
   const p = block.props;
 
   // For non-custom blocks, the code panel works in "override" mode
@@ -62,23 +63,44 @@ export default function CodePanel({ block, set, onOverride }: Props) {
 
       {isOverridden && (
         <>
-          {/* Tab bar */}
-          <div className="code-tabs">
-            {(['html', 'css', 'js'] as Tab[]).map((t) => (
-              <button
-                key={t}
-                className={`code-tab ${tab === t ? 'active' : ''}`}
-                onClick={() => setTab(t)}
-              >
-                {t.toUpperCase()}
-              </button>
-            ))}
+          {/* Tab bar & Height controls */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <div className="code-tabs" style={{ marginBottom: 0 }}>
+              {(['html', 'css', 'js'] as Tab[]).map((t) => (
+                <button
+                  key={t}
+                  className={`code-tab ${tab === t ? 'active' : ''}`}
+                  onClick={() => setTab(t)}
+                >
+                  {t.toUpperCase()}
+                </button>
+              ))}
+            </div>
+
+            <div className="btn-group" style={{ gap: 2 }}>
+              {[
+                { label: '240', h: 240 },
+                { label: '380', h: 380 },
+                { label: '520', h: 520 },
+                { label: '650', h: 650 },
+              ].map((preset) => (
+                <button
+                  key={preset.h}
+                  type="button"
+                  className={`btn-group-btn ${editorHeight === preset.h ? 'active' : ''}`}
+                  onClick={() => setEditorHeight(preset.h)}
+                  style={{ fontSize: 10, padding: '2px 5px' }}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Monaco editor */}
           <div className="code-editor-wrap">
             <MonacoEditor
-              height="320px"
+              height={`${editorHeight}px`}
               language={tab === 'html' ? 'html' : tab === 'css' ? 'css' : 'javascript'}
               value={tab === 'html' ? html : tab === 'css' ? css : js}
               theme="vs-dark"
@@ -98,6 +120,22 @@ export default function CodePanel({ block, set, onOverride }: Props) {
                 if (tab === 'js') set('js', val ?? '');
               }}
             />
+          </div>
+
+          {/* Height slider */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, marginBottom: 12 }}>
+            <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>200px</span>
+            <input
+              type="range"
+              min="200"
+              max="850"
+              step="20"
+              value={editorHeight}
+              onChange={(e) => setEditorHeight(Number(e.target.value))}
+              style={{ flex: 1, cursor: 'pointer', accentColor: 'var(--accent)' }}
+              title="Drag slider to adjust Code Editor height"
+            />
+            <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>850px</span>
           </div>
 
           {/* Height control for iframe */}

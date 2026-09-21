@@ -1,33 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const PUBLIC_PATHS = ['/login', '/register', '/api/auth', '/api/register', '/preview', '/site', '/api/seed', '/sitemap.xml', '/robots.txt'];
+const PUBLIC_PATHS = ['/login', '/register', '/api', '/preview', '/site', '/sitemap.xml', '/robots.txt'];
 const ADMIN_PATHS = ['/dashboard', '/pages'];
 
 export default async function proxy(req: NextRequest) {
   const { pathname, hostname } = req.nextUrl;
 
-  // Check if it's a custom domain request (not localhost, not app.pageforge.io)
+  // 1. Check custom domains (e.g., custom domains mapped to PageForge)
   const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
   if (!isLocalhost && !hostname.includes('pageforge')) {
-    // Custom domain — rewrite to site renderer
     const url = req.nextUrl.clone();
     url.pathname = `/site${pathname}`;
     return NextResponse.rewrite(url);
   }
 
-  // Rewrite root '/' to '/site' so http://localhost:3001 renders the homepage directly
-  if (pathname === '/') {
-    const url = req.nextUrl.clone();
-    url.pathname = '/site';
-    return NextResponse.rewrite(url);
-  }
-
-  // Allow public paths
-  if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
-    return NextResponse.next();
-  }
-
-  // Protect admin paths
+  // 2. Protect admin paths
   if (ADMIN_PATHS.some((p) => pathname.startsWith(p))) {
     const token =
       req.cookies.get('authjs.session-token') ||
@@ -38,9 +25,18 @@ export default async function proxy(req: NextRequest) {
     if (!token) {
       return NextResponse.redirect(new URL('/login', req.url));
     }
+    return NextResponse.next();
   }
 
-  return NextResponse.next();
+  // 3. Allow internal/static/app paths directly
+  if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
+    return NextResponse.next();
+  }
+
+  // 4. Rewrite all public site URLs (e.g. /, /test, /cakes, /track-order) to /site dynamic renderer
+  const url = req.nextUrl.clone();
+  url.pathname = pathname === '/' ? '/site' : `/site${pathname}`;
+  return NextResponse.rewrite(url);
 }
 
 export const config = {

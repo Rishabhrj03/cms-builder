@@ -21,14 +21,17 @@ const TAB_LABELS: { key: Tab; label: string; language: string }[] = [
 
 export default function CustomCodePanel({ block, set }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('html');
+  const [editorHeight, setEditorHeight] = useState<number>(360);
   const p = block.props;
 
   return (
     <div>
-      {/* Tabs */}
+      {/* Tabs & Height Controls Header */}
       <div
         style={{
           display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
           gap: 4,
           marginBottom: 10,
           background: 'var(--bg-base)',
@@ -36,26 +39,51 @@ export default function CustomCodePanel({ block, set }: Props) {
           padding: 4,
         }}
       >
-        {TAB_LABELS.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setActiveTab(t.key)}
-            style={{
-              flex: 1,
-              padding: '5px 0',
-              borderRadius: 6,
-              border: 'none',
-              fontSize: 12,
-              fontWeight: 600,
-              cursor: 'pointer',
-              background: activeTab === t.key ? 'var(--accent)' : 'transparent',
-              color: activeTab === t.key ? '#fff' : 'var(--text-muted)',
-              transition: 'all 150ms ease',
-            }}
-          >
-            {t.label}
-          </button>
-        ))}
+        <div style={{ display: 'flex', gap: 4, flex: 1 }}>
+          {TAB_LABELS.map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setActiveTab(t.key)}
+              style={{
+                flex: 1,
+                padding: '5px 0',
+                borderRadius: 6,
+                border: 'none',
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer',
+                background: activeTab === t.key ? 'var(--accent)' : 'transparent',
+                color: activeTab === t.key ? '#fff' : 'var(--text-muted)',
+                transition: 'all 150ms ease',
+              }}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Editor Height Presets */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, padding: '0 2px' }}>
+        <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>Editor Height: {editorHeight}px</span>
+        <div className="btn-group" style={{ gap: 2 }}>
+          {[
+            { label: '240', h: 240 },
+            { label: '360', h: 360 },
+            { label: '500', h: 500 },
+            { label: '650', h: 650 },
+          ].map((preset) => (
+            <button
+              key={preset.h}
+              type="button"
+              className={`btn-group-btn ${editorHeight === preset.h ? 'active' : ''}`}
+              onClick={() => setEditorHeight(preset.h)}
+              style={{ fontSize: 10, padding: '2px 6px' }}
+            >
+              {preset.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Monaco Editor */}
@@ -69,7 +97,7 @@ export default function CustomCodePanel({ block, set }: Props) {
             }}
           >
             <MonacoEditor
-              height="220px"
+              height={`${editorHeight}px`}
               language={t.language}
               value={p[t.key] as string || ''}
               onChange={(val) => set(t.key, val ?? '')}
@@ -87,6 +115,22 @@ export default function CustomCodePanel({ block, set }: Props) {
           </div>
         </div>
       ))}
+
+      {/* Editor Height Range Slider */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, marginBottom: 12 }}>
+        <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>200px</span>
+        <input
+          type="range"
+          min="200"
+          max="800"
+          step="20"
+          value={editorHeight}
+          onChange={(e) => setEditorHeight(Number(e.target.value))}
+          style={{ flex: 1, cursor: 'pointer', accentColor: 'var(--accent)' }}
+          title="Drag to adjust Code Editor height"
+        />
+        <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>800px</span>
+      </div>
 
       {/* Height control */}
       <div className="form-group" style={{ marginTop: 12 }}>

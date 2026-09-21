@@ -15,6 +15,23 @@ const TYPE_LABELS: Record<BlockType, string> = {
   navbar: '🧭 Navbar',
   'product-grid': '🛍️ Product Grid',
   'pincode-checker': '📍 Pincode Checker',
+  testimonials: '💬 Testimonials',
+  faq: '❓ FAQ',
+  countdown: '⏱️ Countdown',
+  newsletter: '📧 Newsletter',
+  video: '🎬 Video',
+  pricing: '💰 Pricing Table',
+  gallery: '🖼️ Gallery',
+  banner: '📢 Banner',
+  stats: '📊 Stats',
+  steps: '🪜 Steps',
+  'social-links': '🔗 Social Links',
+  'rich-html': '🌐 Rich HTML',
+  heading: '🏷️ Heading',
+  flex: '📐 Flex Container',
+  form: '📋 Form Builder',
+  alert: '💡 Alert Box',
+  badge: '🏷️ Badge Tag',
 };
 
 interface Props {

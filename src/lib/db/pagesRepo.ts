@@ -25,11 +25,19 @@ export async function getPages(workspaceId: string): Promise<PageSummary[]> {
   }));
 }
 
+function buildIdFilter(id: string) {
+  if (ObjectId.isValid(id)) {
+    return { $in: [new ObjectId(id), id] };
+  }
+  return id;
+}
+
 export async function getPageById(id: string, workspaceId?: string): Promise<Page | null> {
   const col = await getCollection();
-  const filter = workspaceId
-    ? { _id: new ObjectId(id), workspaceId }
-    : { _id: new ObjectId(id) };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const filter: any = { _id: buildIdFilter(id) };
+  if (workspaceId) filter.workspaceId = workspaceId;
+
   const page = await col.findOne(filter);
   if (!page) return null;
   return { ...page, _id: page._id.toString() };
@@ -57,18 +65,20 @@ export async function createPage(data: Omit<Page, '_id'>): Promise<string> {
 
 export async function updatePage(id: string, data: Partial<Page>, workspaceId?: string): Promise<boolean> {
   const col = await getCollection();
-  const filter = workspaceId
-    ? { _id: new ObjectId(id), workspaceId }
-    : { _id: new ObjectId(id) };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const filter: any = { _id: buildIdFilter(id) };
+  if (workspaceId) filter.workspaceId = workspaceId;
+
   const result = await col.updateOne(filter, { $set: { ...data, updatedAt: new Date() } });
   return result.matchedCount > 0;
 }
 
 export async function deletePage(id: string, workspaceId?: string): Promise<boolean> {
   const col = await getCollection();
-  const filter = workspaceId
-    ? { _id: new ObjectId(id), workspaceId }
-    : { _id: new ObjectId(id) };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const filter: any = { _id: buildIdFilter(id) };
+  if (workspaceId) filter.workspaceId = workspaceId;
+
   const result = await col.deleteOne(filter);
   return result.deletedCount > 0;
 }

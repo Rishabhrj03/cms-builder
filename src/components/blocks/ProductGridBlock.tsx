@@ -148,7 +148,7 @@ function ProductCard({ product }: { product: ProductItem }) {
 export default function ProductGridBlock({ props }: { props: ProductGridProps }) {
   return (
     <div style={{ padding: '50px 20px', background: '#fafafa', fontFamily: 'system-ui, sans-serif' }}>
-      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+      <div style={{ width: '100%', margin: '0 auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '30px' }}>
           <div>
             <span style={{ background: '#ffe0e6', color: '#e21b5a', padding: '4px 12px', borderRadius: '12px', fontWeight: 700, fontSize: '12px', textTransform: 'uppercase' }}>

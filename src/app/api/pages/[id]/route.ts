@@ -2,10 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { getPageById, updatePage, deletePage } from '@/lib/db/pagesRepo';
 
+import { getWorkspaceByDomain } from '@/lib/db/workspacesRepo';
+
 async function getWorkspaceId() {
   const session = await auth();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (session?.user as any)?.workspaceId as string | undefined;
+  const sessionWsId = (session?.user as any)?.workspaceId as string | undefined;
+  if (sessionWsId) return sessionWsId;
+
+  const defaultWs = await getWorkspaceByDomain('localhost');
+  return defaultWs?._id?.toString();
 }
 
 export async function GET(
